@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Morning Read</title>
+<style>
+:root {
+  --bg:         #0d1117;
+  --surface:    #161b22;
+  --surface2:   #21262d;
+  --border:     #30363d;
+  --accent:     #58a6ff;
+  --green:      #3fb950;
+  --orange:     #d29922;
+  --red:        #f85149;
+  --yellow:     #e3b341;
+  --purple:     #bc8cff;
+  --text:       #e6edf3;
+  --text-dim:   #8b949e;
+  --text-muted: #484f58;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; -webkit-text-size-adjust: 100%;
+}
+
+/* ── Header ── */
+header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(13,17,23,0.97);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+}
+.header-row {
+  display: flex; align-items: center;
+  justify-content: space-between; margin-bottom: 12px;
+}
+.logo { display: flex; align-items: center; gap: 8px; }
+.logo-icon {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px;
+}
+h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+
+.refresh-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--accent); color: #0d1117;
+  border: none; border-radius: 8px; padding: 8px 14px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.refresh-btn:active { transform: scale(0.96); opacity: 0.85; }
+.refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.spin { display: inline-block; }
+.spinning { animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Controls ── */
+.controls { display: flex; gap: 10px; margin-bottom: 12px; }
+.ctrl { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
+  text-transform: uppercase; color: var(--text-muted);
+}
+select {
+  background: var(--surface2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 9px 12px; font-size: 14px; font-weight: 500;
+  width: 100%; cursor: pointer; outline: none;
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b949e' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+}
+select:focus { border-color: var(--accent); }
+
+/* ── Search ── */
+.search-wrap { position: relative; margin-bottom: 12px; }
+.search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 14px; pointer-events: none; }
+#searchInput {
+  width: 100%; background: var(--surface2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 9px 34px; font-size: 14px; outline: none;
+  -webkit-appearance: none;
+}
+#searchInput::placeholder { color: var(--text-muted); }
+#searchInput:focus { border-color: var(--accent); }
+.search-clear {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  color: var(--text-muted); background: none; border: none;
+  font-size: 17px; cursor: pointer; padding: 2px 4px; display: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Source chips ── */
+.sources-row { display: flex; flex-direction: column; gap: 6px; }
+.sources-label-row { display: flex; align-items: center; justify-content: space-between; }
+.sources-label-row label { margin: 0; }
+.toggle-all-btn {
+  font-size: 10px; font-weight: 600; color: var(--accent);
+  background: none; border: none; cursor: pointer; padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.source-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.src-chip {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.4px; padding: 5px 10px; border-radius: 20px;
+  cursor: pointer; border: 1.5px solid transparent;
+  transition: opacity 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent; user-select: none;
+}
+.src-chip:active { transform: scale(0.94); }
+.src-chip.off { opacity: 0.25; filter: grayscale(0.7); }
+
+.src-bloomberg  { background: rgba(248,81,73,0.13);   color: #f85149; border-color: rgba(248,81,73,0.3); }
+.src-ft         { background: rgba(227,179,65,0.13);  color: #e3b341; border-color: rgba(227,179,65,0.3); }
+.src-economist  { background: rgba(210,153,34,0.13);  color: #d29922; border-color: rgba(210,153,34,0.3); }
+.src-aqr        { background: rgba(88,166,255,0.13);  color: #58a6ff; border-color: rgba(88,166,255,0.3); }
+.src-ssrn       { background: rgba(63,185,80,0.13);   color: #3fb950; border-color: rgba(63,185,80,0.3); }
+.src-twosigma   { background: rgba(188,140,255,0.13); color: #bc8cff; border-color: rgba(188,140,255,0.3); }
+.src-risknet    { background: rgba(139,148,158,0.13); color: #8b949e; border-color: rgba(139,148,158,0.3); }
+.src-bis        { background: rgba(100,200,200,0.13); color: #64c8c8; border-color: rgba(100,200,200,0.3); }
+.src-fed        { background: rgba(200,100,100,0.13); color: #c86464; border-color: rgba(200,100,100,0.3); }
+.src-nyfed      { background: rgba(150,200,100,0.13); color: #96c864; border-color: rgba(150,200,100,0.3); }
+.src-alpha      { background: rgba(255,150,50,0.13);  color: #ff9632; border-color: rgba(255,150,50,0.3); }
+
+/* ── Stats bar ── */
+.stats-bar {
+  padding: 6px 16px; font-size: 11px; color: var(--text-muted);
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
+.cache-fresh { color: var(--green); }
+.cache-old   { color: var(--orange); }
+.search-notice {
+  padding: 5px 16px; font-size: 11px; color: var(--accent);
+  background: rgba(88,166,255,0.05); border-bottom: 1px solid rgba(88,166,255,0.12);
+}
+
+/* ── Main ── */
+main { padding: 14px 14px calc(env(safe-area-inset-bottom,0px) + 24px); max-width: 720px; margin: 0 auto; }
+
+/* ── Loading ── */
+.loading {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 70px 24px; color: var(--text-dim); gap: 14px; text-align: center;
+}
+.loader {
+  width: 38px; height: 38px;
+  border: 3px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin 0.75s linear infinite;
+}
+.loading p { font-size: 14px; }
+.loading small { font-size: 12px; color: var(--text-muted); }
+
+/* ── Error ── */
+.error-box {
+  background: rgba(248,81,73,0.08); border: 1px solid rgba(248,81,73,0.3);
+  border-radius: 12px; padding: 20px; margin: 20px 0;
+  text-align: center; color: var(--red); font-size: 14px; line-height: 1.6;
+}
+
+/* ── Article Card ── */
+.article-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px; margin-bottom: 12px;
+  transition: border-color 0.15s;
+}
+.card-top {
+  display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 10px; margin-bottom: 10px;
+}
+.badges { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; flex: 1; }
+.badge {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.4px; padding: 3px 8px; border-radius: 20px;
+}
+.b-bloomberg  { background: rgba(248,81,73,0.13);   color: #f85149; }
+.b-ft         { background: rgba(227,179,65,0.13);  color: #e3b341; }
+.b-economist  { background: rgba(210,153,34,0.13);  color: #d29922; }
+.b-aqr        { background: rgba(88,166,255,0.13);  color: #58a6ff; }
+.b-ssrn       { background: rgba(63,185,80,0.13);   color: #3fb950; }
+.b-twosigma   { background: rgba(188,140,255,0.13); color: #bc8cff; }
+.b-risknet    { background: rgba(139,148,158,0.13); color: #8b949e; }
+.b-bis        { background: rgba(100,200,200,0.13); color: #64c8c8; }
+.b-fed        { background: rgba(200,100,100,0.13); color: #c86464; }
+.b-nyfed      { background: rgba(150,200,100,0.13); color: #96c864; }
+.b-alpha      { background: rgba(255,150,50,0.13);  color: #ff9632; }
+
+.score-pill {
+  flex-shrink: 0; font-size: 11px; font-weight: 700;
+  padding: 4px 10px; border-radius: 20px; white-space: nowrap;
+}
+.score-hi  { background: rgba(63,185,80,0.15);  color: var(--green); }
+.score-mid { background: rgba(227,179,65,0.15); color: var(--yellow); }
+.score-lo  { background: rgba(139,148,158,0.1); color: var(--text-muted); }
+
+.rank { font-size: 10px; font-weight: 800; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.5px; }
+.card-title { font-size: 15px; font-weight: 600; line-height: 1.45; margin-bottom: 10px; color: var(--text); }
+
+/* Summary section */
+.card-summary-wrap { margin-bottom: 12px; }
+.summary-label {
+  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+  color: var(--text-muted); margin-bottom: 4px;
+}
+.card-summary {
+  font-size: 13px; color: var(--text-dim); line-height: 1.7;
+  display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden;
+}
+.card-summary.expanded { -webkit-line-clamp: unset; }
+.expand-btn {
+  font-size: 11px; color: var(--accent); background: none; border: none;
+  cursor: pointer; padding: 3px 0 0; display: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Read button */
+.read-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; padding: 10px 16px; border-radius: 8px; margin-top: 4px;
+  background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.25);
+  color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: none;
+  transition: background 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.read-btn:active { background: rgba(88,166,255,0.2); transform: scale(0.99); }
+
+.card-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; color: var(--text-muted); margin-bottom: 10px; gap: 8px;
+}
+.card-date { white-space: nowrap; }
+.card-chips { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+.chip {
+  font-size: 10px; padding: 2px 7px; border-radius: 10px;
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted);
+}
+.chip.match { background: rgba(88,166,255,0.15); border-color: rgba(88,166,255,0.35); color: var(--accent); }
+
+/* ── Empty ── */
+.empty { text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 14px; line-height: 1.7; }
+.empty strong { display: block; font-size: 18px; color: var(--text-dim); margin-bottom: 8px; }
+
+@media (min-width: 600px) {
+  header { padding: 14px 20px; }
+  main   { padding: 18px 20px 40px; }
+  .article-card { padding: 20px; }
+  .card-title { font-size: 16px; }
+  .card-summary { -webkit-line-clamp: 6; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-row">
+    <div class="logo">
+      <div class="logo-icon">📊</div>
+      <h1>Morning Read</h1>
+    </div>
+    <button class="refresh-btn" id="refreshBtn" onclick="load(true)">
+      <span class="spin" id="spinIcon">↻</span> Refresh
+    </button>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl">
+      <label>Time window</label>
+      <select id="daysSelect" onchange="load(false)">
+        <option value="1">Last 24h</option>
+        <option value="3" selected>Last 3 days</option>
+        <option value="5">Last 5 days</option>
+        <option value="7">Last 7 days</option>
+        <option value="14">Last 2 weeks</option>
+        <option value="30">Last 30 days</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label>Show top</label>
+      <select id="topNSelect" onchange="applyFilters()">
+        <option value="3">Top 3</option>
+        <option value="5" selected>Top 5</option>
+        <option value="10">Top 10</option>
+        <option value="20">Top 20</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input id="searchInput" type="search"
+           placeholder="Search… e.g. carry, swaption, inflation, CPI"
+           oninput="onSearch(this.value)"
+           autocomplete="off" autocorrect="off" spellcheck="false">
+    <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
+  </div>
+
+  <div class="sources-row">
+    <div class="sources-label-row">
+      <label>Sources</label>
+      <button class="toggle-all-btn" id="toggleAllBtn" onclick="toggleAll()">Deselect all</button>
+    </div>
+    <div class="source-chips" id="sourceChips">
+      <!-- Subscription (free preview) -->
+      <div class="src-chip src-bloomberg" data-key="bloomberg" onclick="toggleSource(this)">Bloomberg</div>
+      <div class="src-chip src-ft"        data-key="ft"        onclick="toggleSource(this)">FT</div>
+      <div class="src-chip src-economist" data-key="economist" onclick="toggleSource(this)">Economist</div>
+      <!-- Free research -->
+      <div class="src-chip src-aqr"       data-key="aqr"       onclick="toggleSource(this)">AQR</div>
+      <div class="src-chip src-ssrn"      data-key="ssrn"      onclick="toggleSource(this)">SSRN</div>
+      <div class="src-chip src-twosigma"  data-key="twosigma"  onclick="toggleSource(this)">Two Sigma</div>
+      <div class="src-chip src-alpha"     data-key="alpha"     onclick="toggleSource(this)">Alpha Architect</div>
+      <div class="src-chip src-risknet"   data-key="risknet"   onclick="toggleSource(this)">risk.net</div>
+      <div class="src-chip src-nyfed"     data-key="nyfed"     onclick="toggleSource(this)">NY Fed</div>
+      <div class="src-chip src-bis"       data-key="bis"       onclick="toggleSource(this)">BIS</div>
+      <div class="src-chip src-fed"       data-key="fed"       onclick="toggleSource(this)">Fed Reserve</div>
+    </div>
+  </div>
+</header>
+
+<div class="stats-bar" id="statsBar" style="display:none">
+  <span id="statsTxt"></span>
+  <span id="cacheTxt"></span>
+</div>
+<div class="search-notice" id="searchNotice" style="display:none"></div>
+
+<main id="main">
+  <div class="loading">
+    <div class="loader"></div>
+    <p>Fetching articles from all sources…</p>
+    <small>First load takes ~25 s (AQR fetches individual pages)</small>
+  </div>
+</main>
+
+<script>
+const TOPIC_KEYWORDS = [
+  'carry','momentum','volatility','risk premia','rates','inflation','cpi','qis',
+  'factor','portfolio','macro','fixed income','yield','swaption','fomc',
+  'monetary policy','systematic','backtest','term premium','arp','duration',
+  'central bank','sofr','swap','curve','breakeven','sofr','credit',
+];
+const CACHE_TTL = 6;
+
+let allArticles = [];
+let cachedMeta  = {};
+let searchQuery = '';
+let busy = false;
+
+// ── Source mapping ────────────────────────────────────
+const SRC_KEY_MAP = {
+  bloomberg:  s => s.includes('bloomberg'),
+  ft:         s => s.includes('ft') || s.includes('financial times'),
+  economist:  s => s.includes('economist'),
+  aqr:        s => s.includes('aqr'),
+  ssrn:       s => s.includes('ssrn'),
+  twosigma:   s => s.includes('two sigma'),
+  alpha:      s => s.includes('alpha architect'),
+  risknet:    s => s.includes('risk'),
+  nyfed:      s => s.includes('ny fed'),
+  bis:        s => s.includes('bis'),
+  fed:        s => s.includes('federal reserve'),
+};
+
+function srcKey(source) {
+  const s = (source || '').toLowerCase();
+  for (const [key, test] of Object.entries(SRC_KEY_MAP)) {
+    if (test(s)) return key;
+  }
+  return 'other';
+}
+
+const BADGE_MAP = {
+  bloomberg:'b-bloomberg', ft:'b-ft', economist:'b-economist',
+  aqr:'b-aqr', ssrn:'b-ssrn', twosigma:'b-twosigma',
+  alpha:'b-alpha', risknet:'b-risknet', nyfed:'b-nyfed', bis:'b-bis', fed:'b-fed',
+};
+function srcBadge(source) { return BADGE_MAP[srcKey(source)] || 'b-risknet'; }
+
+// ── Source toggles ────────────────────────────────────
+function activeSources() {
+  const s = new Set();
+  document.querySelectorAll('.src-chip:not(.off)').forEach(el => s.add(el.dataset.key));
+  return s;
+}
+function toggleSource(el) { el.classList.toggle('off'); updateToggleBtn(); applyFilters(); }
+function toggleAll() {
+  const chips = document.querySelectorAll('.src-chip');
+  const anyOff = [...chips].some(c => c.classList.contains('off'));
+  chips.forEach(c => anyOff ? c.classList.remove('off') : c.classList.add('off'));
+  updateToggleBtn(); applyFilters();
+}
+function updateToggleBtn() {
+  const anyOff = [...document.querySelectorAll('.src-chip')].some(c => c.classList.contains('off'));
+  document.getElementById('toggleAllBtn').textContent = anyOff ? 'Select all' : 'Deselect all';
+}
+
+// ── Search ────────────────────────────────────────────
+function onSearch(val) {
+  searchQuery = val.trim().toLowerCase();
+  document.getElementById('searchClear').style.display = searchQuery ? 'block' : 'none';
+  applyFilters();
+}
+function clearSearch() { document.getElementById('searchInput').value = ''; onSearch(''); }
+
+// ── Helpers ───────────────────────────────────────────
+function scoreClass(s) { return s >= 30 ? 'score-hi' : s >= 12 ? 'score-mid' : 'score-lo'; }
+function fmtDate(s) {
+  if (!s) return '';
+  try { return new Date(s).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}); }
+  catch { return s; }
+}
+function matchedChips(title, summary) {
+  const text = (title + ' ' + summary).toLowerCase();
+  return TOPIC_KEYWORDS.filter(k => text.includes(k)).slice(0, 5);
+}
+function highlight(text, query) {
+  if (!query || !text) return text;
+  const re = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
+  return text.replace(re, '<mark style="background:rgba(88,166,255,0.25);color:inherit;border-radius:2px">$1</mark>');
+}
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Filter + render ───────────────────────────────────
+function applyFilters() {
+  if (!allArticles.length) return;
+  const topN   = parseInt(document.getElementById('topNSelect').value);
+  const active = activeSources();
+
+  let filtered = allArticles.filter(a => active.has(srcKey(a.source)));
+  if (searchQuery) {
+    filtered = filtered.filter(a =>
+      (a.title || '').toLowerCase().includes(searchQuery) ||
+      (a.summary || '').toLowerCase().includes(searchQuery)
+    );
+    const n = document.getElementById('searchNotice');
+    n.style.display = 'block';
+    n.textContent = `🔍 "${searchQuery}" — ${filtered.length} result${filtered.length !== 1 ? 's' : ''}`;
+  } else {
+    document.getElementById('searchNotice').style.display = 'none';
+  }
+  renderCards(filtered.slice(0, topN), filtered.length);
+}
+
+function renderCards(articles, total) {
+  const main = document.getElementById('main');
+  const statsBar = document.getElementById('statsBar');
+  statsBar.style.display = 'flex';
+  document.getElementById('statsTxt').textContent =
+    `Showing ${articles.length} of ${total} articles (${cachedMeta.total_fetched || 0} fetched)`;
+
+  const age = cachedMeta.cache_age_hours || 0;
+  const cEl = document.getElementById('cacheTxt');
+  if (age < 0.08)        { cEl.textContent = 'Just refreshed';             cEl.className = 'cache-fresh'; }
+  else if (age < 1)      { cEl.textContent = `${Math.round(age*60)}m ago`; cEl.className = 'cache-fresh'; }
+  else if (age < CACHE_TTL) { cEl.textContent = `${age.toFixed(1)}h ago`;  cEl.className = 'cache-fresh'; }
+  else                   { cEl.textContent = `${age.toFixed(1)}h ago (stale)`; cEl.className = 'cache-old'; }
+
+  if (!articles.length) {
+    main.innerHTML = `<div class="empty"><strong>No articles found</strong>Try a different keyword, select more sources, or increase the time window.</div>`;
+    return;
+  }
+
+  main.innerHTML = articles.map((a, i) => {
+    const chips     = matchedChips(a.title, a.summary || '');
+    const titleHtml = highlight(esc(a.title), searchQuery);
+    const summaryRaw = (a.summary || '').slice(0, 600);
+    const summaryHtml = highlight(esc(summaryRaw), searchQuery);
+    const hasSummary = summaryRaw.length > 30;
+    const id = `card-${i}`;
+
+    return `
+<div class="article-card" id="${id}">
+  <div class="rank">#${i+1}</div>
+  <div class="card-top">
+    <div class="badges">
+      <span class="badge ${srcBadge(a.source)}">${esc(a.source)}</span>
+    </div>
+    <span class="score-pill ${scoreClass(a.score)}">▲ ${a.score}</span>
+  </div>
+  <div class="card-title">${titleHtml}</div>
+  <div class="card-footer">
+    <span class="card-date">${fmtDate(a.published_date)}</span>
+    <div class="card-chips">${chips.map(c=>`<span class="chip${searchQuery && c.includes(searchQuery)?' match':''}">${c}</span>`).join('')}</div>
+  </div>
+  ${hasSummary ? `
+  <div class="card-summary-wrap">
+    <div class="summary-label">Summary</div>
+    <div class="card-summary" id="sum-${i}">${summaryHtml}</div>
+    <button class="expand-btn" id="exp-${i}" onclick="toggleSummary(${i})">Show more ▾</button>
+  </div>` : ''}
+  <a class="read-btn" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">
+    Read full article →
+  </a>
+</div>`;
+  }).join('');
+
+  // Show expand button only when text is actually clamped
+  articles.forEach((_, i) => {
+    const el = document.getElementById(`sum-${i}`);
+    const btn = document.getElementById(`exp-${i}`);
+    if (el && btn && el.scrollHeight > el.clientHeight + 4) {
+      btn.style.display = 'block';
+    }
+  });
+}
+
+function toggleSummary(i) {
+  const el  = document.getElementById(`sum-${i}`);
+  const btn = document.getElementById(`exp-${i}`);
+  if (!el) return;
+  el.classList.toggle('expanded');
+  btn.textContent = el.classList.contains('expanded') ? 'Show less ▴' : 'Show more ▾';
+}
+
+// ── Fetch ─────────────────────────────────────────────
+async function load(force) {
+  if (busy) return;
+  busy = true;
+  const days = document.getElementById('daysSelect').value;
+  const btn  = document.getElementById('refreshBtn');
+  const icon = document.getElementById('spinIcon');
+  btn.disabled = true; icon.classList.add('spinning');
+
+  if (force) {
+    allArticles = [];
+    document.getElementById('main').innerHTML = `
+      <div class="loading">
+        <div class="loader"></div>
+        <p>Fetching articles from all 11 sources…</p>
+        <small>AQR fetches ~60 pages in parallel — allow ~25 s</small>
+      </div>`;
+    document.getElementById('statsBar').style.display = 'none';
+    document.getElementById('searchNotice').style.display = 'none';
+  }
+
+  try {
+    const qs = new URLSearchParams({ days, top_n: 200, force_refresh: force });
+    const resp = await fetch(`/api/articles?${qs}`);
+    if (!resp.ok) throw new Error(`Server error ${resp.status}`);
+    const data = await resp.json();
+    allArticles = data.articles;
+    cachedMeta  = { total_fetched: data.total_fetched, cache_age_hours: data.cache_age_hours };
+    applyFilters();
+  } catch (err) {
+    document.getElementById('main').innerHTML = `
+      <div class="error-box">
+        <strong>Could not load articles</strong><br>${err.message}<br>
+        <small>Make sure the server is running on port 8000.</small>
+      </div>`;
+  } finally {
+    busy = false; btn.disabled = false; icon.classList.remove('spinning');
+  }
+}
+
+load(false);
+</script>
+</body>
+</html>

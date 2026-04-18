@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pyo
+articles.db
+*.db-journal
+.env
+.DS_Store
