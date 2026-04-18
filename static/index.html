@@ -122,6 +122,7 @@ select:focus { border-color: var(--accent); }
 .src-bloomberg  { background: rgba(248,81,73,0.13);   color: #f85149; border-color: rgba(248,81,73,0.3); }
 .src-ft         { background: rgba(227,179,65,0.13);  color: #e3b341; border-color: rgba(227,179,65,0.3); }
 .src-economist  { background: rgba(210,153,34,0.13);  color: #d29922; border-color: rgba(210,153,34,0.3); }
+.src-citadel    { background: rgba(0,200,150,0.13);   color: #00c896; border-color: rgba(0,200,150,0.3); }
 .src-aqr        { background: rgba(88,166,255,0.13);  color: #58a6ff; border-color: rgba(88,166,255,0.3); }
 .src-ssrn       { background: rgba(63,185,80,0.13);   color: #3fb950; border-color: rgba(63,185,80,0.3); }
 .src-twosigma   { background: rgba(188,140,255,0.13); color: #bc8cff; border-color: rgba(188,140,255,0.3); }
@@ -185,6 +186,7 @@ main { padding: 14px 14px calc(env(safe-area-inset-bottom,0px) + 24px); max-widt
 .b-bloomberg  { background: rgba(248,81,73,0.13);   color: #f85149; }
 .b-ft         { background: rgba(227,179,65,0.13);  color: #e3b341; }
 .b-economist  { background: rgba(210,153,34,0.13);  color: #d29922; }
+.b-citadel    { background: rgba(0,200,150,0.13);   color: #00c896; }
 .b-aqr        { background: rgba(88,166,255,0.13);  color: #58a6ff; }
 .b-ssrn       { background: rgba(63,185,80,0.13);   color: #3fb950; }
 .b-twosigma   { background: rgba(188,140,255,0.13); color: #bc8cff; }
@@ -314,6 +316,7 @@ main { padding: 14px 14px calc(env(safe-area-inset-bottom,0px) + 24px); max-widt
       <div class="src-chip src-ft"        data-key="ft"        onclick="toggleSource(this)">FT</div>
       <div class="src-chip src-economist" data-key="economist" onclick="toggleSource(this)">Economist</div>
       <!-- Free research -->
+      <div class="src-chip src-citadel"   data-key="citadel"   onclick="toggleSource(this)">Citadel Sec</div>
       <div class="src-chip src-aqr"       data-key="aqr"       onclick="toggleSource(this)">AQR</div>
       <div class="src-chip src-ssrn"      data-key="ssrn"      onclick="toggleSource(this)">SSRN</div>
       <div class="src-chip src-twosigma"  data-key="twosigma"  onclick="toggleSource(this)">Two Sigma</div>
@@ -359,6 +362,7 @@ const SRC_KEY_MAP = {
   bloomberg:  s => s.includes('bloomberg'),
   ft:         s => s.includes('ft') || s.includes('financial times'),
   economist:  s => s.includes('economist'),
+  citadel:    s => s.includes('citadel'),
   aqr:        s => s.includes('aqr'),
   ssrn:       s => s.includes('ssrn'),
   twosigma:   s => s.includes('two sigma'),
@@ -378,7 +382,7 @@ function srcKey(source) {
 }
 
 const BADGE_MAP = {
-  bloomberg:'b-bloomberg', ft:'b-ft', economist:'b-economist',
+  bloomberg:'b-bloomberg', ft:'b-ft', economist:'b-economist', citadel:'b-citadel',
   aqr:'b-aqr', ssrn:'b-ssrn', twosigma:'b-twosigma',
   alpha:'b-alpha', risknet:'b-risknet', nyfed:'b-nyfed', bis:'b-bis', fed:'b-fed',
 };

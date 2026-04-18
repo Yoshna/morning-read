@@ -366,6 +366,65 @@ def fetch_ssrn(days: int) -> list[dict]:
         return []
 
 
+# ── Citadel Securities (via Google News RSS — site blocks direct scraping) ───
+
+def fetch_citadel(days: int) -> list[dict]:
+    """
+    Citadel Securities blocks scrapers with Cloudflare.
+    Google News indexes their published articles and exposes them via RSS,
+    letting us surface only articles whose source is Citadel Securities itself.
+    """
+    url = (
+        "https://news.google.com/rss/search"
+        "?q=%22citadel+securities%22&hl=en-US&gl=US&ceid=US:en"
+    )
+    try:
+        feed = feedparser.parse(url, request_headers=HEADERS)
+        articles = []
+        for e in feed.entries:
+            # Only keep entries published by Citadel Securities themselves
+            source_title = (e.get("source") or {}).get("title", "")
+            if "citadel" not in source_title.lower():
+                continue
+
+            pub = ""
+            for attr in ("published", "updated"):
+                if hasattr(e, attr):
+                    pub = _parse_date(getattr(e, attr))
+                    break
+            if pub and not _within_days(pub, days):
+                continue
+
+            link = e.get("link", "")
+            title = e.get("title", "").strip()
+            # Strip " - Citadel Securities" suffix Google News appends
+            title = re.sub(r"\s*[-–]\s*Citadel Securities\s*$", "", title).strip()
+
+            summary = _clean_html(e.get("summary", ""))
+            # Google News summaries are just the title again; drop them
+            if summary.lower().strip() == title.lower().strip():
+                summary = ""
+
+            if not title or not link:
+                continue
+
+            articles.append({
+                "id": _uid(link),
+                "source": "Citadel Securities",
+                "title": title,
+                "url": link,
+                "summary": summary[:800],
+                "published_date": pub,
+                "is_paywall": False,
+            })
+
+        logger.info("Citadel Securities: %d articles", len(articles))
+        return articles
+    except Exception as exc:
+        logger.warning("Citadel Securities fetch failed: %s", exc)
+        return []
+
+
 # ── Two Sigma ─────────────────────────────────────────────────────────────────
 
 def fetch_twosigma(days: int) -> list[dict]:
@@ -419,17 +478,18 @@ def fetch_twosigma(days: int) -> list[dict]:
 
 def fetch_all(days: int) -> list[dict]:
     tasks = {
-        "Bloomberg":       fetch_bloomberg,
-        "FT":              fetch_ft,
-        "Economist":       fetch_economist,
-        "risk.net":        fetch_risk_net,
-        "BIS":             fetch_bis,
-        "Federal Reserve": fetch_fed,
-        "NY Fed":          fetch_ny_fed,
-        "Alpha Architect": fetch_alpha_architect,
-        "AQR":             fetch_aqr,
-        "SSRN":            fetch_ssrn,
-        "Two Sigma":       fetch_twosigma,
+        "Bloomberg":           fetch_bloomberg,
+        "FT":                  fetch_ft,
+        "Economist":           fetch_economist,
+        "Citadel Securities":  fetch_citadel,
+        "risk.net":            fetch_risk_net,
+        "BIS":                 fetch_bis,
+        "Federal Reserve":     fetch_fed,
+        "NY Fed":              fetch_ny_fed,
+        "Alpha Architect":     fetch_alpha_architect,
+        "AQR":                 fetch_aqr,
+        "SSRN":                fetch_ssrn,
+        "Two Sigma":           fetch_twosigma,
     }
     all_articles: list[dict] = []
 

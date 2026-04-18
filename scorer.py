@@ -105,6 +105,7 @@ _SOURCE_BONUS: dict[str, int] = {
     "SSRN": 4,
     "Two Sigma": 5,
     "Alpha Architect": 5,
+    "Citadel Securities": 5,
     "NY Fed": 3,
     "BIS": 3,
     "risk.net": 2,
