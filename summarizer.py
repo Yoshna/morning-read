@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json as _json
 import logging
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -18,25 +19,51 @@ HEADERS = {
 }
 FETCH_TIMEOUT = 8
 
+_PAYWALL_CLASSES = re.compile(r"paywall|subscribe-wall|subscription-wall|paid-content|premium-content", re.I)
 
-def _fetch_article_text(url: str) -> str:
-    """Fetch and extract readable text from an article URL."""
+
+def _is_paywalled(soup: BeautifulSoup) -> bool:
+    """Detect paywall from JSON-LD isAccessibleForFree or HTML markers."""
+    # JSON-LD check (Bloomberg, WSJ embed this)
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = _json.loads(script.string or "")
+            items = data if isinstance(data, list) else [data]
+            for item in items:
+                if isinstance(item, dict) and item.get("isAccessibleForFree") is False:
+                    return True
+        except Exception:
+            pass
+    # HTML element check
+    if soup.find(id=_PAYWALL_CLASSES) or soup.find(class_=_PAYWALL_CLASSES):
+        return True
+    return False
+
+
+def _fetch_article(url: str) -> tuple[bool, str]:
+    """
+    Fetch article page. Returns (is_paywalled, text).
+    is_paywalled is True only when we can positively confirm a paywall.
+    """
     try:
         r = requests.get(url, headers=HEADERS, timeout=FETCH_TIMEOUT)
         soup = BeautifulSoup(r.text, "html.parser")
+        paywalled = _is_paywalled(soup)
+        if paywalled:
+            return True, ""
         for tag in soup(["script", "style", "nav", "header", "footer", "aside", "noscript", "figure"]):
             tag.decompose()
-        container = soup.find("article") or soup.find("main") or soup.find(id=re.compile(r"content|article|body", re.I))
+        container = (soup.find("article") or soup.find("main")
+                     or soup.find(id=re.compile(r"content|article|body", re.I))
+                     or soup.find("body"))
         if not container:
-            container = soup.find("body")
-        if not container:
-            return ""
+            return False, ""
         paras = [p.get_text(" ", strip=True) for p in container.find_all("p")]
         text = " ".join(p for p in paras if len(p) > 40)
-        return text[:6000]
+        return False, text[:6000]
     except Exception as exc:
         logger.debug("Article fetch failed [%s]: %s", url[:60], exc)
-        return ""
+        return False, ""
 
 
 def _score_sentence(sent: str) -> float:
@@ -66,38 +93,27 @@ def _extract_bullets(text: str, n: int = 3) -> list[str]:
     return [sentences[i] for i in top_idx]
 
 
-def ai_summary(title: str, content: str, url: str = "", is_paywall: bool = False) -> str:
-    """
-    Free extractive summary.
-    For non-paywall articles: fetches the article page and picks the 3 most
-    relevant sentences by keyword score.
-    For paywall articles: falls back to the RSS summary text.
-    Returns a newline-joined bullet string, or '' if nothing useful found.
-    """
-    full_text = ""
-    if url and not is_paywall:
-        full_text = _fetch_article_text(url)
-
-    text = full_text if len(full_text) > 200 else (content or "")
-    bullets = _extract_bullets(text, n=3)
-    if not bullets:
-        return ""
-    return "\n".join(f"• {b}" for b in bullets)
-
-
 def enrich_articles(articles: list[dict], max_workers: int = 6) -> None:
-    """Fill ai_summary in-place for articles that lack one, using a thread pool."""
+    """
+    Fill ai_summary in-place (and update is_paywall if detected) for articles
+    that lack a summary, using a thread pool for parallel page fetches.
+    """
     targets = [a for a in articles if not a.get("ai_summary")]
     if not targets:
         return
 
     def _run(a: dict) -> None:
-        a["ai_summary"] = ai_summary(
-            a.get("title", ""),
-            a.get("summary", ""),
-            url=a.get("url", ""),
-            is_paywall=bool(a.get("is_paywall")),
-        )
+        already_paywall = bool(a.get("is_paywall"))
+        full_text = ""
+
+        if a.get("url") and not already_paywall:
+            detected_paywall, full_text = _fetch_article(a["url"])
+            if detected_paywall:
+                a["is_paywall"] = True  # mark individual article as paywalled
+
+        text = full_text if len(full_text) > 200 else (a.get("summary") or "")
+        bullets = _extract_bullets(text, n=3)
+        a["ai_summary"] = "\n".join(f"• {b}" for b in bullets) if bullets else ""
 
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         futures = {ex.submit(_run, a): a for a in targets}
@@ -105,4 +121,4 @@ def enrich_articles(articles: list[dict], max_workers: int = 6) -> None:
             try:
                 fut.result()
             except Exception as exc:
-                logger.warning("Summary failed: %s", exc)
+                logger.warning("Enrichment failed: %s", exc)

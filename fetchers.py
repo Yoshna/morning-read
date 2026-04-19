@@ -125,14 +125,14 @@ def _fetch_rss(url: str, source: str, days: int, paywall: bool = False) -> list[
 # ── Bloomberg ─────────────────────────────────────────────────────────────────
 
 def fetch_bloomberg(days: int) -> list[dict]:
-    """Bloomberg RSS — summaries publicly readable; full articles require subscription."""
+    """Bloomberg RSS — some articles free, some paywalled; detected per-article."""
     urls = [
         "https://feeds.bloomberg.com/markets/news.rss",
         "https://feeds.bloomberg.com/economics/news.rss",
     ]
     out: list[dict] = []
     for url in urls:
-        out.extend(_fetch_rss(url, "Bloomberg", days, paywall=True))
+        out.extend(_fetch_rss(url, "Bloomberg", days, paywall=False))
     return out
 
 
