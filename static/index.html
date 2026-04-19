@@ -131,6 +131,7 @@ select:focus { border-color: var(--accent); }
 .src-fed        { background: rgba(200,100,100,0.13); color: #c86464; border-color: rgba(200,100,100,0.3); }
 .src-nyfed      { background: rgba(150,200,100,0.13); color: #96c864; border-color: rgba(150,200,100,0.3); }
 .src-alpha      { background: rgba(255,150,50,0.13);  color: #ff9632; border-color: rgba(255,150,50,0.3); }
+.src-wsj        { background: rgba(0,160,220,0.13);   color: #00a0dc; border-color: rgba(0,160,220,0.3); }
 
 /* ── Stats bar ── */
 .stats-bar {
@@ -195,6 +196,7 @@ main { padding: 14px 14px calc(env(safe-area-inset-bottom,0px) + 24px); max-widt
 .b-fed        { background: rgba(200,100,100,0.13); color: #c86464; }
 .b-nyfed      { background: rgba(150,200,100,0.13); color: #96c864; }
 .b-alpha      { background: rgba(255,150,50,0.13);  color: #ff9632; }
+.b-wsj        { background: rgba(0,160,220,0.13);   color: #00a0dc; }
 
 .score-pill {
   flex-shrink: 0; font-size: 11px; font-weight: 700;
@@ -309,6 +311,7 @@ main { padding: 14px 14px calc(env(safe-area-inset-bottom,0px) + 24px); max-widt
       <div class="src-chip src-bloomberg" data-key="bloomberg" onclick="toggleSource(this)">Bloomberg</div>
       <div class="src-chip src-ft"        data-key="ft"        onclick="toggleSource(this)">FT</div>
       <div class="src-chip src-economist" data-key="economist" onclick="toggleSource(this)">Economist</div>
+      <div class="src-chip src-wsj"       data-key="wsj"       onclick="toggleSource(this)">WSJ</div>
       <!-- Free research -->
       <div class="src-chip src-citadel"   data-key="citadel"   onclick="toggleSource(this)">Citadel Sec</div>
       <div class="src-chip src-aqr"       data-key="aqr"       onclick="toggleSource(this)">AQR</div>
@@ -356,6 +359,7 @@ const SRC_KEY_MAP = {
   bloomberg:  s => s.includes('bloomberg'),
   ft:         s => s.includes('ft') || s.includes('financial times'),
   economist:  s => s.includes('economist'),
+  wsj:        s => s.includes('wsj') || s.includes('wall street'),
   citadel:    s => s.includes('citadel'),
   aqr:        s => s.includes('aqr'),
   ssrn:       s => s.includes('ssrn'),
@@ -376,7 +380,7 @@ function srcKey(source) {
 }
 
 const BADGE_MAP = {
-  bloomberg:'b-bloomberg', ft:'b-ft', economist:'b-economist', citadel:'b-citadel',
+  bloomberg:'b-bloomberg', ft:'b-ft', economist:'b-economist', wsj:'b-wsj', citadel:'b-citadel',
   aqr:'b-aqr', ssrn:'b-ssrn', twosigma:'b-twosigma',
   alpha:'b-alpha', risknet:'b-risknet', nyfed:'b-nyfed', bis:'b-bis', fed:'b-fed',
 };

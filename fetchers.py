@@ -476,11 +476,25 @@ def fetch_twosigma(days: int) -> list[dict]:
 
 # ── orchestrator ──────────────────────────────────────────────────────────────
 
+def fetch_wsj(days: int) -> list[dict]:
+    """WSJ RSS feeds — summaries publicly readable."""
+    urls = [
+        "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",
+        "https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml",
+        "https://feeds.a.dj.com/rss/RSSWorldNews.xml",
+    ]
+    out: list[dict] = []
+    for url in urls:
+        out.extend(_fetch_rss(url, "WSJ", days, paywall=False))
+    return out
+
+
 def fetch_all(days: int) -> list[dict]:
     tasks = {
         "Bloomberg":           fetch_bloomberg,
         "FT":                  fetch_ft,
         "Economist":           fetch_economist,
+        "WSJ":                 fetch_wsj,
         "Citadel Securities":  fetch_citadel,
         "risk.net":            fetch_risk_net,
         "BIS":                 fetch_bis,
