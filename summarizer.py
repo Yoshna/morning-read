@@ -1,69 +1,108 @@
 from __future__ import annotations
 
 import logging
-import os
+import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import requests
+from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
-_CLIENT = None
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+}
+FETCH_TIMEOUT = 8
 
 
-def _client():
-    global _CLIENT
-    if _CLIENT is None:
-        import anthropic
-        key = os.environ.get("ANTHROPIC_API_KEY", "")
-        if not key:
-            return None
-        _CLIENT = anthropic.Anthropic(api_key=key)
-    return _CLIENT
-
-
-PROMPT = """You are a research assistant for a Rates QIS Trader who works in:
-- Rates, Fixed Income, Yield Curve, Swaptions
-- QIS: Carry, Momentum, Volatility, Value, Alternative Risk Premia
-- Macro: Inflation, Central Banks, Monetary Policy
-- Risk Management and Portfolio Construction
-
-Summarize the article below in EXACTLY this format — no extra text:
-
-• [Key point 1 — specific fact or finding]
-• [Key point 2 — specific fact or finding]
-• [Key point 3 — specific fact or finding]
-📊 Rates/QIS angle: [One sentence on why this matters for rates or QIS trading]
-
-Article title: {title}
-
-Article content:
-{content}"""
-
-
-def ai_summary(title: str, content: str) -> str:
-    """
-    Generate a 3-bullet AI summary using Claude Haiku.
-    Returns empty string if API key not set or call fails.
-    """
-    c = _client()
-    if not c:
-        return ""
-
-    text = content.strip()
-    if not text or len(text) < 80:
-        return ""
-
-    # Truncate to ~2000 chars to keep cost low
-    truncated = text[:2000]
-
+def _fetch_article_text(url: str) -> str:
+    """Fetch and extract readable text from an article URL."""
     try:
-        msg = c.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=300,
-            messages=[{
-                "role": "user",
-                "content": PROMPT.format(title=title, content=truncated),
-            }],
-        )
-        return msg.content[0].text.strip()
+        r = requests.get(url, headers=HEADERS, timeout=FETCH_TIMEOUT)
+        soup = BeautifulSoup(r.text, "html.parser")
+        for tag in soup(["script", "style", "nav", "header", "footer", "aside", "noscript", "figure"]):
+            tag.decompose()
+        container = soup.find("article") or soup.find("main") or soup.find(id=re.compile(r"content|article|body", re.I))
+        if not container:
+            container = soup.find("body")
+        if not container:
+            return ""
+        paras = [p.get_text(" ", strip=True) for p in container.find_all("p")]
+        text = " ".join(p for p in paras if len(p) > 40)
+        return text[:6000]
     except Exception as exc:
-        logger.warning("AI summary failed for '%s': %s", title[:50], exc)
+        logger.debug("Article fetch failed [%s]: %s", url[:60], exc)
         return ""
+
+
+def _score_sentence(sent: str) -> float:
+    """Score a sentence by keyword relevance to rates/QIS trading."""
+    from scorer import KEYWORDS
+    s = sent.lower()
+    return sum(w for kw, w in KEYWORDS.items() if kw in s)
+
+
+def _extract_bullets(text: str, n: int = 3) -> list[str]:
+    """Return top-n sentences from text ranked by keyword relevance."""
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    sentences = [s.strip() for s in sentences if 35 < len(s.strip()) < 280]
+    if not sentences:
+        return []
+    if len(sentences) <= n:
+        return sentences
+
+    scored = []
+    for i, sent in enumerate(sentences):
+        kw_score = _score_sentence(sent)
+        # Mild position boost — opening sentences carry context
+        pos_boost = max(0.0, 1.5 - i * 0.15)
+        scored.append((kw_score + pos_boost, i, sent))
+
+    top_idx = sorted(idx for _, idx, _ in sorted(scored, reverse=True)[:n])
+    return [sentences[i] for i in top_idx]
+
+
+def ai_summary(title: str, content: str, url: str = "", is_paywall: bool = False) -> str:
+    """
+    Free extractive summary.
+    For non-paywall articles: fetches the article page and picks the 3 most
+    relevant sentences by keyword score.
+    For paywall articles: falls back to the RSS summary text.
+    Returns a newline-joined bullet string, or '' if nothing useful found.
+    """
+    full_text = ""
+    if url and not is_paywall:
+        full_text = _fetch_article_text(url)
+
+    text = full_text if len(full_text) > 200 else (content or "")
+    bullets = _extract_bullets(text, n=3)
+    if not bullets:
+        return ""
+    return "\n".join(f"• {b}" for b in bullets)
+
+
+def enrich_articles(articles: list[dict], max_workers: int = 6) -> None:
+    """Fill ai_summary in-place for articles that lack one, using a thread pool."""
+    targets = [a for a in articles if not a.get("ai_summary")]
+    if not targets:
+        return
+
+    def _run(a: dict) -> None:
+        a["ai_summary"] = ai_summary(
+            a.get("title", ""),
+            a.get("summary", ""),
+            url=a.get("url", ""),
+            is_paywall=bool(a.get("is_paywall")),
+        )
+
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futures = {ex.submit(_run, a): a for a in targets}
+        for fut in as_completed(futures):
+            try:
+                fut.result()
+            except Exception as exc:
+                logger.warning("Summary failed: %s", exc)
