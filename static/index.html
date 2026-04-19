@@ -133,6 +133,34 @@ select:focus { border-color: var(--accent); }
 .src-alpha      { background: rgba(255,150,50,0.13);  color: #ff9632; border-color: rgba(255,150,50,0.3); }
 .src-wsj        { background: rgba(0,160,220,0.13);   color: #00a0dc; border-color: rgba(0,160,220,0.3); }
 
+/* ── Paywall toggle ── */
+.paywall-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0 2px;
+}
+.paywall-row label { font-size: 11px; color: var(--text-dim); cursor: pointer; user-select: none; }
+.toggle-switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  position: absolute; inset: 0; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 20px; cursor: pointer;
+  transition: background 0.2s;
+}
+.toggle-track::before {
+  content: ''; position: absolute; left: 2px; top: 2px;
+  width: 14px; height: 14px; background: var(--text-muted);
+  border-radius: 50%; transition: transform 0.2s, background 0.2s;
+}
+.toggle-switch input:checked + .toggle-track { background: rgba(63,185,80,0.25); border-color: var(--green); }
+.toggle-switch input:checked + .toggle-track::before { transform: translateX(16px); background: var(--green); }
+
+/* Paywall badge on card */
+.paywall-badge {
+  font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px;
+  background: rgba(210,153,34,0.15); color: var(--orange);
+  border: 1px solid rgba(210,153,34,0.3);
+}
+
 /* ── Stats bar ── */
 .stats-bar {
   padding: 6px 16px; font-size: 11px; color: var(--text-muted);
@@ -324,6 +352,14 @@ main { padding: 14px 14px calc(env(safe-area-inset-bottom,0px) + 24px); max-widt
       <div class="src-chip src-fed"       data-key="fed"       onclick="toggleSource(this)">Fed Reserve</div>
     </div>
   </div>
+
+  <div class="paywall-row">
+    <label for="paywallToggle">🔒 Include subscription articles (FT, Economist, WSJ, risk.net)</label>
+    <label class="toggle-switch">
+      <input type="checkbox" id="paywallToggle" checked onchange="applyFilters()">
+      <span class="toggle-track"></span>
+    </label>
+  </div>
 </header>
 
 <div class="stats-bar" id="statsBar" style="display:none">
@@ -454,7 +490,12 @@ function applyFilters() {
   const topN   = parseInt(document.getElementById('topNSelect').value);
   const active = activeSources();
 
-  let filtered = allArticles.filter(a => active.has(srcKey(a.source)));
+  const showPaywall = document.getElementById('paywallToggle').checked;
+  let filtered = allArticles.filter(a => {
+    if (!active.has(srcKey(a.source))) return false;
+    if (!showPaywall && a.is_paywall) return false;
+    return true;
+  });
   if (searchQuery) {
     filtered = filtered.filter(a =>
       (a.title || '').toLowerCase().includes(searchQuery) ||
@@ -502,6 +543,7 @@ function renderCards(articles, total) {
   <div class="card-top">
     <div class="badges">
       <span class="badge ${srcBadge(a.source)}">${esc(a.source)}</span>
+      ${a.is_paywall ? '<span class="paywall-badge">🔒 Subscription</span>' : ''}
     </div>
     <span class="score-pill ${scoreClass(a.score)}">▲ ${a.score}</span>
   </div>

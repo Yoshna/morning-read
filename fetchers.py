@@ -139,7 +139,7 @@ def fetch_bloomberg(days: int) -> list[dict]:
 # ── Financial Times ───────────────────────────────────────────────────────────
 
 def fetch_ft(days: int) -> list[dict]:
-    """FT RSS — summaries publicly readable; full articles may need FT account."""
+    """FT RSS — summaries publicly readable; full articles require FT subscription."""
     urls = [
         ("https://www.ft.com/markets?format=rss",       "FT Markets"),
         ("https://www.ft.com/economics?format=rss",     "FT Economics"),
@@ -147,14 +147,14 @@ def fetch_ft(days: int) -> list[dict]:
     ]
     out: list[dict] = []
     for url, label in urls:
-        out.extend(_fetch_rss(url, label, days, paywall=False))
+        out.extend(_fetch_rss(url, label, days, paywall=True))
     return out
 
 
 # ── The Economist ─────────────────────────────────────────────────────────────
 
 def fetch_economist(days: int) -> list[dict]:
-    """Economist RSS — summaries publicly readable; full articles may need account."""
+    """Economist RSS — summaries publicly readable; full articles require subscription."""
     urls = [
         "https://www.economist.com/finance-and-economics/rss.xml",
         "https://www.economist.com/briefing/rss.xml",
@@ -162,7 +162,7 @@ def fetch_economist(days: int) -> list[dict]:
     ]
     out: list[dict] = []
     for url in urls:
-        out.extend(_fetch_rss(url, "The Economist", days, paywall=False))
+        out.extend(_fetch_rss(url, "The Economist", days, paywall=True))
     return out
 
 
@@ -272,7 +272,7 @@ def fetch_risk_net(_: int) -> list[dict]:
                 "url": url,
                 "summary": "",
                 "published_date": "",
-                "is_paywall": False,
+                "is_paywall": True,
             })
 
         logger.info("risk.net: %d articles", len(articles))
@@ -477,7 +477,7 @@ def fetch_twosigma(days: int) -> list[dict]:
 # ── orchestrator ──────────────────────────────────────────────────────────────
 
 def fetch_wsj(days: int) -> list[dict]:
-    """WSJ RSS feeds — summaries publicly readable."""
+    """WSJ RSS feeds — summaries publicly readable; full articles require subscription."""
     urls = [
         "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",
         "https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml",
@@ -485,7 +485,7 @@ def fetch_wsj(days: int) -> list[dict]:
     ]
     out: list[dict] = []
     for url in urls:
-        out.extend(_fetch_rss(url, "WSJ", days, paywall=False))
+        out.extend(_fetch_rss(url, "WSJ", days, paywall=True))
     return out
 
 
