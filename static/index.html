@@ -480,7 +480,8 @@ function applyFilters() {
   if (searchQuery) {
     filtered = filtered.filter(a =>
       (a.title || '').toLowerCase().includes(searchQuery) ||
-      (a.summary || '').toLowerCase().includes(searchQuery)
+      (a.summary || '').toLowerCase().includes(searchQuery) ||
+      (a.ai_summary || '').toLowerCase().includes(searchQuery)
     );
     const n = document.getElementById('searchNotice');
     n.style.display = 'block';

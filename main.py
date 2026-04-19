@@ -83,7 +83,10 @@ async def get_ranked_articles(
         if not ranked:
             raw = await run_in_threadpool(fetch_all, days)
             ranked = score_and_rank(raw)
-            _enrich_with_ai(ranked)
+        # fill AI summaries for any top articles that are still missing them
+        needs_ai = any(not a.get("ai_summary") for a in ranked[:AI_SUMMARY_TOP_N])
+        if needs_ai:
+            await run_in_threadpool(_enrich_with_ai, ranked)
             await run_in_threadpool(save_articles, ranked)
 
     filtered = _filter_by_days(ranked, days)
