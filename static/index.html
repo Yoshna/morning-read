@@ -224,6 +224,27 @@ main { padding: 14px 14px calc(env(safe-area-inset-bottom,0px) + 24px); max-widt
   -webkit-tap-highlight-color: transparent;
 }
 
+/* AI summary */
+.ai-summary-wrap {
+  background: rgba(88,166,255,0.05); border: 1px solid rgba(88,166,255,0.15);
+  border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;
+}
+.ai-label {
+  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+  color: var(--accent); margin-bottom: 6px; display: flex; align-items: center; gap: 4px;
+}
+.ai-bullets { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.ai-bullets li {
+  font-size: 12.5px; color: var(--text-dim); line-height: 1.55;
+  padding-left: 14px; position: relative;
+}
+.ai-bullets li::before { content: '•'; position: absolute; left: 0; color: var(--accent); }
+.ai-angle {
+  font-size: 12px; font-weight: 600; color: var(--text);
+  background: rgba(63,185,80,0.08); border-left: 2px solid var(--green);
+  padding: 6px 8px; border-radius: 0 4px 4px 0; margin-top: 8px; line-height: 1.5;
+}
+
 /* Read button */
 .read-btn {
   display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -433,6 +454,21 @@ function highlight(text, query) {
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function renderAiSummary(raw) {
+  if (!raw || raw.trim().length < 10) return '';
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  const bullets = lines.filter(l => l.startsWith('•'));
+  const angleLine = lines.find(l => l.startsWith('📊'));
+  if (!bullets.length) return '';
+  const bulletHtml = bullets.map(b => `<li>${esc(b.replace(/^•\s*/, ''))}</li>`).join('');
+  const angleHtml = angleLine
+    ? `<div class="ai-angle">${esc(angleLine.replace(/^📊\s*Rates\/QIS angle:\s*/i, ''))}</div>` : '';
+  return `<div class="ai-summary-wrap">
+  <div class="ai-label">✦ AI Summary</div>
+  <ul class="ai-bullets">${bulletHtml}</ul>
+  ${angleHtml}
+</div>`;
+}
 
 // ── Filter + render ───────────────────────────────────
 function applyFilters() {
@@ -475,11 +511,12 @@ function renderCards(articles, total) {
   }
 
   main.innerHTML = articles.map((a, i) => {
-    const chips     = matchedChips(a.title, a.summary || '');
-    const titleHtml = highlight(esc(a.title), searchQuery);
+    const chips      = matchedChips(a.title, a.summary || '');
+    const titleHtml  = highlight(esc(a.title), searchQuery);
+    const aiHtml     = renderAiSummary(a.ai_summary || '');
     const summaryRaw = (a.summary || '').slice(0, 600);
     const summaryHtml = highlight(esc(summaryRaw), searchQuery);
-    const hasSummary = summaryRaw.length > 30;
+    const hasSummary = !aiHtml && summaryRaw.length > 30;
     const id = `card-${i}`;
 
     return `
@@ -496,6 +533,7 @@ function renderCards(articles, total) {
     <span class="card-date">${fmtDate(a.published_date)}</span>
     <div class="card-chips">${chips.map(c=>`<span class="chip${searchQuery && c.includes(searchQuery)?' match':''}">${c}</span>`).join('')}</div>
   </div>
+  ${aiHtml}
   ${hasSummary ? `
   <div class="card-summary-wrap">
     <div class="summary-label">Summary</div>

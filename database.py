@@ -26,9 +26,15 @@ def _init_db():
                 published_date TEXT,
                 score       REAL DEFAULT 0,
                 is_paywall  INTEGER DEFAULT 0,
-                fetched_at  TEXT NOT NULL
+                fetched_at  TEXT NOT NULL,
+                ai_summary  TEXT DEFAULT ''
             )
         """)
+        # migrate existing DB that lacks the column
+        try:
+            conn.execute("ALTER TABLE articles ADD COLUMN ai_summary TEXT DEFAULT ''")
+        except Exception:
+            pass
         conn.commit()
 
 
@@ -37,13 +43,14 @@ def save_articles(articles: list[dict]):
         for a in articles:
             conn.execute(
                 """INSERT OR REPLACE INTO articles
-                   (id, source, title, url, summary, published_date, score, is_paywall, fetched_at)
-                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                   (id, source, title, url, summary, published_date, score, is_paywall, fetched_at, ai_summary)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
                 (
                     a["id"], a["source"], a["title"], a["url"],
                     a.get("summary", ""), a.get("published_date", ""),
                     a.get("score", 0), int(a.get("is_paywall", False)),
                     datetime.utcnow().isoformat(),
+                    a.get("ai_summary", ""),
                 ),
             )
         conn.commit()

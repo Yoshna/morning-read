@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse
 from database import cache_age_hours, get_articles, save_articles
 from fetchers import fetch_all
 from scorer import score_and_rank
+from summarizer import ai_summary
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
 logger = logging.getLogger(__name__)
@@ -43,6 +44,19 @@ def _filter_by_days(articles: list[dict], days: int) -> list[dict]:
     return out
 
 
+AI_SUMMARY_TOP_N = 20  # summarise only the top-ranked articles to keep API cost low
+
+
+def _enrich_with_ai(ranked: list[dict]) -> None:
+    """Fills ai_summary in-place for top articles that lack one."""
+    for a in ranked[:AI_SUMMARY_TOP_N]:
+        if a.get("ai_summary"):
+            continue
+        content = a.get("summary", "")
+        result = ai_summary(a.get("title", ""), content)
+        a["ai_summary"] = result
+
+
 @app.get("/")
 async def root():
     return FileResponse(str(STATIC / "index.html"))
@@ -61,6 +75,7 @@ async def get_ranked_articles(
         logger.info("Fetching fresh articles (cache age=%.1fh, force=%s)", age, force_refresh)
         raw = await run_in_threadpool(fetch_all, days)
         ranked = score_and_rank(raw)
+        _enrich_with_ai(ranked)
         await run_in_threadpool(save_articles, ranked)
     else:
         logger.info("Using cache (age=%.1fh)", age)
@@ -68,6 +83,7 @@ async def get_ranked_articles(
         if not ranked:
             raw = await run_in_threadpool(fetch_all, days)
             ranked = score_and_rank(raw)
+            _enrich_with_ai(ranked)
             await run_in_threadpool(save_articles, ranked)
 
     filtered = _filter_by_days(ranked, days)
