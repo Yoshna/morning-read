@@ -8,7 +8,7 @@ from pathlib import Path
 
 import uvicorn
 from dateutil import parser as dateutil_parser
-from fastapi import FastAPI, Query
+from fastapi import BackgroundTasks, FastAPI, Query
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 
@@ -24,6 +24,7 @@ app = FastAPI(title="Morning Read")
 
 STATIC = Path(__file__).parent / "static"
 CACHE_TTL_HOURS = 6
+ENRICH_TOP_N = 20
 
 
 def _filter_by_days(articles: list[dict], days: int) -> list[dict]:
@@ -44,11 +45,12 @@ def _filter_by_days(articles: list[dict], days: int) -> list[dict]:
     return out
 
 
-ENRICH_TOP_N = 20
-
-
-def _enrich_with_ai(ranked: list[dict]) -> None:
-    enrich_articles(ranked[:ENRICH_TOP_N])
+def _enrich_and_save(articles: list[dict]) -> None:
+    """Background task: enrich top articles with summaries then save."""
+    targets = articles[:ENRICH_TOP_N]
+    enrich_articles(targets)
+    save_articles(articles)
+    logger.info("Background enrichment done for %d articles", len(targets))
 
 
 @app.get("/")
@@ -58,6 +60,7 @@ async def root():
 
 @app.get("/api/articles")
 async def get_ranked_articles(
+    background_tasks: BackgroundTasks,
     days: int = Query(default=3, ge=1, le=90),
     top_n: int = Query(default=50, ge=1, le=200),
     force_refresh: bool = Query(default=False),
@@ -69,19 +72,20 @@ async def get_ranked_articles(
         logger.info("Fetching fresh articles (cache age=%.1fh, force=%s)", age, force_refresh)
         raw = await run_in_threadpool(fetch_all, days)
         ranked = score_and_rank(raw)
-        _enrich_with_ai(ranked)
+        # Save immediately so response is fast, enrich summaries in background
         await run_in_threadpool(save_articles, ranked)
+        background_tasks.add_task(_enrich_and_save, ranked)
     else:
         logger.info("Using cache (age=%.1fh)", age)
         ranked = get_articles(days)
         if not ranked:
             raw = await run_in_threadpool(fetch_all, days)
             ranked = score_and_rank(raw)
-        # fill AI summaries for any top articles that are still missing them
-        needs_ai = any(not a.get("ai_summary") for a in ranked[:AI_SUMMARY_TOP_N])
-        if needs_ai:
-            await run_in_threadpool(_enrich_with_ai, ranked)
             await run_in_threadpool(save_articles, ranked)
+        # Enrich any missing summaries in background
+        needs_ai = any(not a.get("ai_summary") for a in ranked[:ENRICH_TOP_N])
+        if needs_ai:
+            background_tasks.add_task(_enrich_and_save, ranked)
 
     filtered = _filter_by_days(ranked, days)
 
